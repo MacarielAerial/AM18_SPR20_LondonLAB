@@ -3,7 +3,7 @@ README.txt
 setup.cfg
 setup.py
 Kami/Analyse.py
-Kami/NeuralNetwork.py
+Kami/EntityEmbedding.py
 Kami/Preprocess.py
 Kami/__init__.py
 Kami/plot_embeddings.py

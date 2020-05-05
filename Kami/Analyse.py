@@ -9,7 +9,7 @@ import pickle
 import os
 import csv
 import sys
-from NeuralNetwork import EntityEmbedding
+from .EntityEmbedding import EntityEmbedding
 from datetime import datetime
 from sklearn.preprocessing import LabelEncoder
 sys.setrecursionlimit(10000)

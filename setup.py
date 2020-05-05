@@ -8,14 +8,14 @@ with open(path.join(this_directory, 'README.txt'), 'r', encoding = 'utf-8') as f
 setup(
   name = 'Kami',
   packages = ['Kami'],
-  version = '0.2.3',
+  version = '0.2.4',
   license='MIT',
   description = 'Forecast sales with Entity Embedding LSTM',
   long_description = long_description,
   author = 'Yifei Yu',
   author_email = 'yyu.mam2020@london.edu',
   url = 'https://github.com/MacarielAerial',
-  download_url = 'https://github.com/MacarielAerial/AM18_SPR20_LondonLAB/archive/V_0.2.3.tar.gz',
+  download_url = 'https://github.com/MacarielAerial/AM18_SPR20_LondonLAB/archive/V_0.2.4.tar.gz',
   keywords = ['SALES', 'FORECAST', 'LSTM', 'EMBEDDING'],
   install_requires=[
           'numpy',
