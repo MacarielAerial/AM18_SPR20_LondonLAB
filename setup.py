@@ -15,7 +15,7 @@ setup(
   author = 'Yifei Yu',
   author_email = 'yyu.mam2020@london.edu',
   url = 'https://github.com/MacarielAerial',
-  download_url = 'https://github.com/MacarielAerial/AM18_SPR20_LondonLAB/archive/v_0.2.tar.gz',
+  download_url = 'https://github.com/MacarielAerial/AM18_SPR20_LondonLAB/archive/V_0.2.tar.gz',
   keywords = ['SALES', 'FORECAST', 'LSTM', 'EMBEDDING'],
   install_requires=[
           'numpy',
