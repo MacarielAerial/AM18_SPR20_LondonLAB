@@ -1,20 +1,21 @@
 from distutils.core import setup
+from os import path
 
-with open('README.md', 'r') as fh
+this_directory = path.abspath(path.dirname(__file__))
+with open(path.join(this_directory, 'README.txt'), 'r', encoding = 'utf-8') as fh:
 	long_description = fh.read()
 
 setup(
   name = 'Kami',
   packages = ['Kami'],
-  version = '0.1',
+  version = '0.2',
   license='MIT',
-  description = 'Forecast sales with entity embedding LSTM neural network based on past POS record',
+  description = 'Forecast sales with Entity Embedding LSTM',
   long_description = long_description,
-  long_description_content_type = 'text/markdown',
   author = 'Yifei Yu',
   author_email = 'yyu.mam2020@london.edu',
   url = 'https://github.com/MacarielAerial',
-  download_url = 'https://github.com/MacarielAerial/AM18_SPR20_LondonLAB/archive/v_0.1.tar.gz',
+  download_url = 'https://github.com/MacarielAerial/AM18_SPR20_LondonLAB/archive/v_0.2.tar.gz',
   keywords = ['SALES', 'FORECAST', 'LSTM', 'EMBEDDING'],
   install_requires=[
           'numpy',
