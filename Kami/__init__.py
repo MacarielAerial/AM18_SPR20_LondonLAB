@@ -1,2 +1,2 @@
-from Kami.Preprocess import Preprocess, Aux, Helper
+from Kami.Preprocess import Preprocess
 from Kami.Analyse import Analyse
