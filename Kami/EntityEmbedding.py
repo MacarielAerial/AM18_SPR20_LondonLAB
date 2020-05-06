@@ -13,10 +13,15 @@ from tensorflow.keras.utils import plot_model
 
 class EntityEmbedding:
 	'''Main model instance'''
-	def __init__(self, X_train, y_train, X_val, y_val, cache_dir_path, output_dir_path, feature_labels, epochs = 15, patience = 4):
+	def __init__(self, X_train, y_train, X_val, y_val, cache_dir_path, output_dir_path, feature_labels, n_1 = 512, n_2 = 256, n_3 = 256, n_4 = 128, n_5 = 64, dropout = 0.4, output_activation = 'sigmoid', err_func = 'mean_absolute_error', optimizer = 'adam', epochs = 15, patience = 4, batch_size = 128):
 		self.max_log_y = max(np.max(np.log(y_train)), np.max(np.log(y_val)))
-		self.__build_keras_model(output_dir_path)
-		self.fit(X_train, y_train, X_val, y_val, cache_dir_path, feature_labels, patience = patience, epochs = epochs)
+		self.__build_keras_model(output_dir_path = output_dir_path,
+					 n_1 = n_1, n_2 = n_2, n_3 = n_3, n_4 = n_4, n_5 = n_5,
+					 dropout = dropout,
+					 output_activation = output_activation,
+					 err_func = err_func,
+					 optimizer = optimizer)
+		self.fit(X_train, y_train, X_val, y_val, cache_dir_path, feature_labels, patience = patience, epochs = epochs, batch_size = batch_size)
 
 	def preprocessing(self, X, feature_labels):
 		return Aux.split_features(X, feature_labels)
@@ -27,11 +32,11 @@ class EntityEmbedding:
 	def _val_for_pred(self, val):
 		return np.exp(val * self.max_log_y)
 
-	def fit(self, X_train, y_train, X_val, y_val, cache_dir_path, feature_labels, patience = 5, epochs = 15):
+	def fit(self, X_train, y_train, X_val, y_val, cache_dir_path, feature_labels, patience, epochs, batch_size):
 		callbacks = [EarlyStopping(monitor = 'val_loss', patience = patience), ModelCheckpoint(filepath = cache_dir_path + 'best_model_weights.hdf5', monitor = 'val_loss', verbose = 1, save_best_only = True)]
 		self.model.fit(self.preprocessing(X_train, feature_labels), self._val_for_fit(y_train),
 				validation_data = (self.preprocessing(X_val, feature_labels), self._val_for_fit(y_val)),
-				epochs = epochs, batch_size = 128)
+				epochs = epochs, batch_size = batch_size)
 		print('{0:*^80}'.format('Result on Validation Data:'))
 		print('{0:*^80}'.format(self.evaluate(X_val, y_val)))
 
@@ -47,7 +52,7 @@ class EntityEmbedding:
 		result = np.sum(relative_err)/len(y_val)
 		return result
 
-	def __build_keras_model(self, output_dir_path):
+	def __build_keras_model(self, output_dir_path, n_1, n_2, n_3, n_4, n_5, dropout, output_activation, err_func, optimizer):
 		input_store = Input(shape = (1,))
 		output_store = Embedding(6, 5, name = 'store_embedding')(input_store)
 		output_store = Reshape(target_shape = (5,))(output_store)
@@ -78,15 +83,25 @@ class EntityEmbedding:
 		output_model = Concatenate()(output_embeddings)
 		output_model = Dropout(0.02)(output_model)
 		output_model = Reshape(target_shape = (1,231))(output_model)
-		output_model = LSTM(512, return_sequences = True, dropout = 0.4)(output_model)
-		output_model = LSTM(256, return_sequences = True, dropout = 0.4)(output_model)
-		output_model = LSTM(256, return_sequences = True, dropout = 0.4)(output_model)
-		output_model = LSTM(128, return_sequences = True, dropout = 0.4)(output_model)
-		output_model = LSTM(64, return_sequences = False, dropout = 0.4)(output_model)
-		output_model = Dense(1, activation = 'relu')(output_model)
+		output_model = Dense(n_1)(output_model)
+		output_model = Dropout(dropout)(output_model)
+		output_model = Activation('relu')(output_model)
+		output_model = Dense(n_2)(output_model)
+		output_model = Dropout(dropout)(output_model)
+		output_model = Activation('relu')(output_model)
+		output_model = Dense(n_3)(output_model)
+		output_model = Dropout(dropout)(output_model)
+		output_model = Activation('relu')(output_model)
+		output_model = Dense(n_4)(output_model)
+		output_model = Dropout(dropout)(output_model)
+		output_model = Activation('relu')(output_model)
+		output_model = Dense(n_5)(output_model)
+		output_model = Dropout(dropout)(output_model)
+		output_model = Activation('relu')(output_model)
+		output_model = Dense(1, activation = output_activation)(output_model)
 
 		self.model = KerasModel(inputs = input_model, outputs = output_model)
-		self.model.compile(loss = 'mean_squared_error', optimizer = 'adam')
+		self.model.compile(loss = err_func, optimizer = optimizer)
 
 		plot_model(self.model, to_file = output_dir_path + 'entity_embedding_model.png', show_shapes = True, dpi = 300)
 

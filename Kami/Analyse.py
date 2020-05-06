@@ -70,7 +70,9 @@ class Analyse:
 
 		print('{0:*^80}'.format('Fitting Neural Network with Entity Embedding LSTM...'))
 		models = []
-		[models.append(EntityEmbedding(X_train, y_train, X_val, y_val, cache_dir_path, output_dir_path, Helper.feature_labels)) for i in range(n_ensemble)]
+		[models.append(EntityEmbedding(X_train, y_train, X_val, y_val,
+						 cache_dir_path, output_dir_path,
+						 Helper.feature_labels)) for i in range(n_ensemble)]
 		if save_embeddings:
 			Helper.save_embeddings(models, cache_dir_path)
 
