@@ -17,7 +17,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 class Analyse:
 	'''Main module'''
-	def __init__(self, output_dir_path, cache_dir_path, n_1 = 1024, n_2 = 512, n_3 = 256, n_4 = 128, n_5 = 64, dropout = 0.4, output_activation = 'relu', err_func = 'mean_absolute_error', optimizer = 'adam', epochs = 25, patience = 5, batch_size = 256, n_sample = 50000, n_ensemble = 5, val_split_ratio = 0.95, save_embeddings = True, saved_embeddings_fname = 'embeddings.pickle'):
+	def __init__(self, output_dir_path, cache_dir_path, n_1 = 1024, n_2 = 512, n_3 = 256, n_4 = 128, n_5 = 64, dropout = 0.4, output_activation = 'relu', err_func = 'mean_absolute_error', optimizer = 'adam', epochs = 25, patience = 5, batch_size = 256, n_sample = 600000, n_ensemble = 5, val_split_ratio = 0.95, save_embeddings = True, saved_embeddings_fname = 'embeddings.pickle'):
 		'''Initiate local variables'''
 		self.r_train, self.r_val = 0, 0
 		print('{0:*^80}'.format('Sales Forecast with Entity Embedding Model Initiated'))
