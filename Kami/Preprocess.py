@@ -49,12 +49,13 @@ class Aux:
 		df.drop(columns = cols_drop, inplace = True)
 
 		# Modify raw data
-		df = df.loc[df['sales'] > 0, :]
+		df = df.loc[df['sales'] > 0.01, :]
 		df.loc[:, cols_renames['day_of_the_week_monday_is_0']] = (df[cols_renames['day_of_the_week_monday_is_0']].astype(int) + 1).astype('category')
 		df.loc[:, 'date'] = pd.to_datetime(df['date'])
 
 		# Re-order and split modified data
-		df.set_index(['date', 'store', 'product']).sort_index().reset_index(inplace = True)
+		df = df.set_index(['date', 'store', 'product']).sort_index(ascending = True)
+		df = df.reset_index()
 		train, test = df.iloc[:round(len(df) * split_ratio), :], df.iloc[round(len(df) * split_ratio):, :]
 
 		return train, test

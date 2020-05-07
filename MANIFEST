@@ -5,7 +5,7 @@ setup.py
 Kami/Analyse.py
 Kami/EntityEmbedding.py
 Kami/Preprocess.py
+Kami/Visualisation.py
 Kami/__init__.py
 Kami/plot_embeddings.py
-Kami/rossman.py
 Kami/vis.py

@@ -17,15 +17,14 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 class Analyse:
 	'''Main module'''
-	def __init__(self, output_dir_path, cache_dir_path):
+	def __init__(self, output_dir_path, cache_dir_path, n_1 = 1024, n_2 = 512, n_3 = 256, n_4 = 128, n_5 = 64, dropout = 0.4, output_activation = 'relu', err_func = 'mean_absolute_error', optimizer = 'adam', epochs = 25, patience = 5, batch_size = 256, n_sample = 50000, n_ensemble = 5, val_split_ratio = 0.95, save_embeddings = True, saved_embeddings_fname = 'embeddings.pickle'):
 		'''Initiate local variables'''
 		self.r_train, self.r_val = 0, 0
-		self.feature_labels = []
 		print('{0:*^80}'.format('Sales Forecast with Entity Embedding Model Initiated'))
 		self.extract_csv(cache_dir_path)
 		self.prep_features(cache_dir_path)
-		self.train_model(cache_dir_path, output_dir_path)
-		self.test_model(cache_dir_path, output_dir_path)
+		models = self.train_model(cache_dir_path, output_dir_path, n_1, n_2, n_3, n_4, n_5, dropout, output_activation, err_func, optimizer, epochs, patience, batch_size, n_sample, n_ensemble, val_split_ratio, save_embeddings, saved_embeddings_fname)
+		self.test_model(models, cache_dir_path, output_dir_path)
 		print('{0:*^80}'.format('Sales Forecast with Entity Embedding Model Completed'))
 
 	def __repr__(self):
@@ -60,7 +59,7 @@ class Analyse:
 			pickle.dump((train_x, train_y), f_train, -1), pickle.dump(test_x, f_test, -1)
 		pd.DataFrame(test_x).to_csv(cache_dir_path + 'test_features_encoded.csv', header = Helper.feature_labels, index = False)
 
-	def train_model(self, cache_dir_path, output_dir_path, n_sample = 500000, n_ensemble = 5, val_split_ratio = 0.95, save_embeddings = True, saved_embeddings_fname = 'embeddings.pickle'):
+	def train_model(self, cache_dir_path, output_dir_path, n_1, n_2, n_3, n_4, n_5, dropout, output_activation, err_func, optimizer, epochs, patience, batch_size, n_sample, n_ensemble, val_split_ratio, save_embeddings, saved_embeddings_fname):
 		'''Train an entity embedding LSTM neural network to predict target variable'''
 		with open(cache_dir_path + 'train_prepped.pickle', 'rb') as f:
 			(X, y) = pickle.load(f)
@@ -72,27 +71,33 @@ class Analyse:
 		models = []
 		[models.append(EntityEmbedding(X_train, y_train, X_val, y_val,
 						 cache_dir_path, output_dir_path,
-						 Helper.feature_labels)) for i in range(n_ensemble)]
+						 Helper.feature_labels,
+						 n_1, n_2, n_3, n_4, n_5,
+						 dropout, output_activation,
+						 err_func, optimizer, epochs,
+						 patience, batch_size)) for i in range(n_ensemble)]
 		if save_embeddings:
 			Helper.save_embeddings(models, cache_dir_path)
 
 		print('{0:*^80}'.format('Evaluating the Ensemble Model'))
 		print('{0:*^80}'.format('Training Error:'))
 		self.r_train = Aux.evaluate_models(models, X_train, y_train)
-		print('{0:*^80}'.format(str(r_train)))
+		print('{0:*^80}'.format(str(self.r_train)))
 		print('{0:*^80}'.format('Validation Error:'))
 		self.r_val = Aux.evaluate_models(models, X_val, y_val)
-		print('{0:*^80}'.format(str(r_val)))
+		print('{0:*^80}'.format(str(self.r_val)))
+		return models
 
 	def test_model(self, models, cache_dir_path, output_dir_path):
 		'''Evaluate model performance based on test data'''
+		print('{0:*^80}'.format('Exporting Predictions to Memory...'))
 		with open(cache_dir_path + 'test_prepped.pickle', 'rb') as f:
 			X_test = pickle.load(f)
 		with open(output_dir_path + 'test_predicted.csv', 'w') as f:
-			f.write(','.join(Helper.feature_labels) + '\n')
-		for i, record in enumerate(X_test):
-			y_pred = np.mean([model.guess(record) for model in models])
-			f.write('{},{},{},{},{},{},{}\n'.format([record[i] for i in range(len(self.feature_labels))].append(y_pred)))
+			f.write(','.join(Helper.feature_labels) + ',predicted\n')
+			for i, record in enumerate(X_test):
+				y_pred = np.mean([model.guess(record, Helper.feature_labels) for model in models])
+				f.write('{},{},{},{},{},{},{}\n'.format(*[record[i] for i in range(len(Helper.feature_labels))] + [y_pred]))
 
 class Aux:
 	'''Auxiliary module to reduce code clutters'''
@@ -126,6 +131,14 @@ class Aux:
 		X_train, X_val, y_train, y_val = X[:n_train], X[n_train:], y[:n_train], y[n_train:]
 		X_train, y_train = Helper.sample(X_train, y_train, n_sample)
 		return X_train, X_val, y_train, y_val
+
+	def evaluate_models(models, X, y):
+		assert(min(y) > 0)
+		guessed_sales = np.array([model.guess(X, Helper.feature_labels) for model in models])
+		mean_sales = guessed_sales.mean(axis = 0)
+		relative_err = np.absolute((y - mean_sales) / y)
+		result = np.sum(relative_err) / len(y)
+		return result
 
 class Helper:
 	'''Independent auxiliary functions'''
