@@ -4,7 +4,9 @@ The script creates predicted vs. actual visualisations after the neural network 
 
 # Import libraries
 import os
+import pickle
 import numpy as np
+from sklearn import manifold
 import pandas as pd
 import matplotlib.pyplot as plt
 
