@@ -29,12 +29,14 @@ class Preprocess:
 
 	def data_clean(self, df, cache_dir_path, split_ratio, cols_renames):
 		'''Convert data into the required format'''
-		self.train, self.test = Aux.clean_product_data(df = df, split_ratio = split_ratio, cols_renames = cols_renames)
+		self.train, self.test, self.train_weekly, self.test_weekly = Aux.clean_product_data(df = df, split_ratio = split_ratio, cols_renames = cols_renames)
 
 	def shutdown(self, cache_dir_path):
 		'''Export results as the final step'''
 		self.train.to_csv(cache_dir_path + 'train.csv', index = False)
 		self.test.to_csv(cache_dir_path + 'test.csv', index = False)
+		self.train_weekly.to_csv(cache_dir_path + 'train_weekly.csv', index = False)
+		self.test_weekly.to_csv(cache_dir_path + 'test_weekly.csv', index = False)
 
 class Aux:
 	'''Axuliary module to structure the code'''
@@ -52,13 +54,16 @@ class Aux:
 		df = df.loc[df['sales'] > 0.01, :]
 		df.loc[:, cols_renames['day_of_the_week_monday_is_0']] = (df[cols_renames['day_of_the_week_monday_is_0']].astype(int) + 1).astype('category')
 		df.loc[:, 'date'] = pd.to_datetime(df['date'])
+		df.loc[:, 'quantity'] = df['sales']/df['price']
 
 		# Re-order and split modified data
 		df = df.set_index(['date', 'store', 'product']).sort_index(ascending = True)
-		df = df.reset_index()
+		df_weekly = df.groupby([pd.Grouper(level = 'date', freq = 'W'), pd.Grouper(level = 'store'), pd.Grouper(level = 'product')]).agg({'sales': 'sum', 'price': 'mean', 'quantity': 'sum', 'day_of_week': 'first', 'day_of_month': 'first', 'month': 'first'})
+		df.reset_index(inplace = True), df_weekly.reset_index(inplace = True)
 		train, test = df.iloc[:round(len(df) * split_ratio), :], df.iloc[round(len(df) * split_ratio):, :]
+		train_weekly, test_weekly = df_weekly.iloc[:round(len(df_weekly) * split_ratio), :], df_weekly.iloc[round(len(df_weekly) * split_ratio):, :]
 
-		return train, test
+		return train, test, train_weekly, test_weekly
 
 class Helper:
 	'''Standalone helper function to further reduce clutter'''

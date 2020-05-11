@@ -17,12 +17,13 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 class Analyse:
 	'''Main module'''
-	def __init__(self, output_dir_path, cache_dir_path, n_1 = 1024, n_2 = 512, n_3 = 256, n_4 = 128, n_5 = 64, dropout = 0.4, output_activation = 'relu', err_func = 'mean_absolute_error', optimizer = 'adam', epochs = 25, patience = 5, batch_size = 256, n_sample = 600000, n_ensemble = 5, val_split_ratio = 0.95, save_embeddings = True, saved_embeddings_fname = 'embeddings.pickle'):
+	def __init__(self, output_dir_path, cache_dir_path, sales_as_label = True, weekly_agg = False, n_1 = 1024, n_2 = 512, n_3 = 256, n_4 = 128, n_5 = 64, dropout = 0.4, output_activation = 'relu', err_func = 'mean_absolute_error', optimizer = 'adam', epochs = 25, patience = 5, batch_size = 256, n_sample = 600000, n_ensemble = 5, val_split_ratio = 0.95, save_embeddings = True, saved_embeddings_fname = 'embeddings.pickle'):
 		'''Initiate local variables'''
 		self.r_train, self.r_val = 0, 0
+		target_label = 'sales' if sales_as_label else 'quantity'
 		print('{0:*^80}'.format('Sales Forecast with Entity Embedding Model Initiated'))
-		self.extract_csv(cache_dir_path)
-		self.prep_features(cache_dir_path)
+		self.extract_csv(cache_dir_path, weekly_agg = weekly_agg)
+		self.prep_features(cache_dir_path, target_label = target_label)
 		models = self.train_model(cache_dir_path, output_dir_path, n_1, n_2, n_3, n_4, n_5, dropout, output_activation, err_func, optimizer, epochs, patience, batch_size, n_sample, n_ensemble, val_split_ratio, save_embeddings, saved_embeddings_fname)
 		self.test_model(models, cache_dir_path, output_dir_path)
 		print('{0:*^80}'.format('Sales Forecast with Entity Embedding Model Completed'))
@@ -30,9 +31,10 @@ class Analyse:
 	def __repr__(self):
 		return 'Please assign an object to store the instance'
 
-	def extract_csv(self, cache_dir_path):
+	def extract_csv(self, cache_dir_path, weekly_agg):
 		'''Convert cached csv files into dictionary-like objects'''
-		train_path, test_path = cache_dir_path + 'train.csv', cache_dir_path + 'test.csv'
+		train_path = (cache_dir_path + 'train.csv') if not weekly_agg else (cache_dir_path + 'train_weekly.csv')
+		test_path = (cache_dir_path + 'test.csv') if not weekly_agg else (cache_dir_path + 'test_weekly.csv')
 		with open(train_path) as csv_train, open(test_path) as csv_test:
 			train, test = csv.reader(csv_train, delimiter = ','), csv.reader(csv_test, delimiter = ',')
 			with open(cache_dir_path + 'train.pickle', 'wb') as f_train, open(cache_dir_path + 'test.pickle', 'wb') as f_test:
@@ -40,15 +42,15 @@ class Analyse:
 				train = train[::-1]
 				pickle.dump(train, f_train, -1), pickle.dump(test, f_test, -1)
 
-	def prep_features(self, cache_dir_path):
+	def prep_features(self, cache_dir_path, target_label):
 		'''Engineer features to ready for neural network'''
 		with open(cache_dir_path + 'train.pickle', 'rb') as f_train, open(cache_dir_path + 'test.pickle', 'rb') as f_test:
 			train, test = pickle.load(f_train), pickle.load(f_test)
 			n_train_val = len(train)
 
 		train_x, train_y, test_x, test_y = [], [], [], []
-		train_x, train_y = Aux.select_and_split(data = train, target = train_y, features = train_x)
-		test_x, test_y = Aux.select_and_split(data = test, target = test_y, features = test_x)
+		train_x, train_y = Aux.select_and_split(data = train, target = train_y, features = train_x, target_label = target_label)
+		test_x, test_y = Aux.select_and_split(data = test, target = test_y, features = test_x, target_label = target_label)
 		print('{0:*^80}'.format('Number of Train & Validation and Test Observations:'))
 		print('{0:*^80}'.format(str(len(train_y)) + ' and ' + str(len(test_y))))
 		print('{0:*^80}'.format('Range of Train Target:'))
@@ -101,7 +103,7 @@ class Analyse:
 
 class Aux:
 	'''Auxiliary module to reduce code clutters'''
-	def select_and_split(data, target, features, target_label = 'sales'):
+	def select_and_split(data, target, features, target_label):
 		'''Select a subset of features and return separate arrays for target and features'''
 		for i in range(len(data)):
 			fl = Helper.select_features(record = data[i])
