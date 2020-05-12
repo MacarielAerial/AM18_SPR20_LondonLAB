@@ -13,9 +13,11 @@ import matplotlib.pyplot as plt
 class Vis:
 	'''Main module'''
 	def __init__(self, output_dir_path, cache_dir_path, sub_dir = 'Predicted_vs_Actual_Plots/'):
+		self.merged = pd.DataFrame()
+		self.product_dict = {}
 		print('{0:*^80}'.format('Predicted vs. Actual Plotting in Progress...'))
 		self.configure(output_dir_path, sub_dir = sub_dir)
-		merged, product_dict = self.preprocess(cache_dir_path, output_dir_path)
+		self.preprocess(cache_dir_path, output_dir_path)
 		self.plot_predicted_vs_actual(merged, product_dict, 'overall_sales', output_dir_path, sub_dir, plot_total_sales = True)
 		[self.plot_predicted_vs_actual(merged, product_dict, item, output_dir_path, sub_dir, plot_total_sales = False) for item in product_dict]
 		print('{0:*^80}'.format('Predicted vs. Actual Plotting Completed'))
@@ -35,16 +37,16 @@ class Vis:
 		test = pd.read_csv(cache_dir_path + 'test.csv', index_col = False)
 		test_predicted = pd.read_csv(output_dir_path + 'test_predicted.csv', index_col = False)
 		print(test['product'].value_counts()[:50])
-		merged = pd.DataFrame({'date': test['date'],
+		self.merged = pd.DataFrame({'date': test['date'],
 					 'store': test['store'],
 					 'store_idx': test_predicted['store'],
 					 'product': test['product'],
 					 'product_idx': test_predicted['product'],
 					 'actual': test['sales'],
 					 'predicted': test_predicted['predicted']})
-		merged['date'] = pd.to_datetime(merged['date'], format = '%Y-%m-%d')
-		product_dict = dict(zip(merged['product'].array, merged['product_idx'].array))
-		return merged, product_dict
+		self.merged['date'] = pd.to_datetime(self.merged['date'], format = '%Y-%m-%d')
+		self.merged.to_csv(output_dir_path + 'evaluation.csv', index = False)
+		self.product_dict = dict(zip(self.merged['product'].array, self.merged['product_idx'].array))
 
 	def plot_predicted_vs_actual(self, merged, product_dict, item, output_dir_path, sub_dir, plot_total_sales):
 		'''Plot actual vs. predicted plots for all products and overall sales'''

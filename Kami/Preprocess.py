@@ -11,6 +11,7 @@ class Preprocess:
 	'''Main module'''
 	def __init__(self, input_f_path, cache_dir_path, split_ratio = 0.95, cols_renames = {'description': 'product', 'day_of_the_week_monday_is_0': 'day_of_week', 'total_average_sell': 'price', 'total_net_sales': 'sales'}):
 		'''Initiate settings'''
+		pd.options.mode.chained_assignment = None
 		self.cols_renames, self.cache_dir_path = cols_renames, cache_dir_path
 		self.df_raw, self.train, self.test = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 		self.data_import(input_f_path = input_f_path)
