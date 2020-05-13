@@ -18,8 +18,8 @@ class Vis:
 		print('{0:*^80}'.format('Predicted vs. Actual Plotting in Progress...'))
 		self.configure(output_dir_path, sub_dir = sub_dir)
 		self.preprocess(cache_dir_path, output_dir_path)
-		self.plot_predicted_vs_actual(merged, product_dict, 'overall_sales', output_dir_path, sub_dir, plot_total_sales = True)
-		[self.plot_predicted_vs_actual(merged, product_dict, item, output_dir_path, sub_dir, plot_total_sales = False) for item in product_dict]
+		self.plot_predicted_vs_actual(self.merged, self.product_dict, 'overall_sales', output_dir_path, sub_dir, plot_total_sales = True)
+		[self.plot_predicted_vs_actual(self.merged, self.product_dict, item, output_dir_path, sub_dir, plot_total_sales = False) for item in self.product_dict]
 		print('{0:*^80}'.format('Predicted vs. Actual Plotting Completed'))
 		Vis2(output_dir_path, cache_dir_path)
 		print('{0:*^80}'.format('Product Embedding Plotting Completed'))		
