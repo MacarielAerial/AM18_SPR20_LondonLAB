@@ -4,6 +4,7 @@ setup.cfg
 setup.py
 Kami/Analyse.py
 Kami/EntityEmbedding.py
+Kami/Forecast.py
 Kami/Preprocess.py
 Kami/Visualisation.py
 Kami/__init__.py

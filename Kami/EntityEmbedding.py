@@ -15,6 +15,8 @@ class EntityEmbedding:
 	'''Main model instance'''
 	def __init__(self, X_train, y_train, X_val, y_val, cache_dir_path, output_dir_path, feature_labels, n_1, n_2, n_3, n_4, n_5, dropout, output_activation, err_func, optimizer, epochs, patience, batch_size):
 		self.max_log_y = max(np.max(np.log(y_train)), np.max(np.log(y_val)))
+		with open(cache_dir_path + 'scale_base.txt', 'w+') as f:
+			f.write(str(self.max_log_y))
 		self.__build_keras_model(output_dir_path = output_dir_path,
 					 n_1 = n_1, n_2 = n_2, n_3 = n_3, n_4 = n_4, n_5 = n_5,
 					 dropout = dropout,
@@ -80,25 +82,51 @@ class EntityEmbedding:
 		input_model = [input_store, input_product, input_dow, input_dom, input_year, input_month]	
 		output_embeddings = [output_store, output_product, output_dow, output_dom, output_year, output_month]
 
-		output_model = Concatenate()(output_embeddings)
-		output_model = Reshape(target_shape = (1,231))(output_model)
-		output_model = Dense(n_1)(output_model)
-		output_model = BatchNormalization()(output_model)
-		output_model = Activation('relu')(output_model)
-		output_model = Dense(n_2)(output_model)
-		output_model = BatchNormalization()(output_model)
-		output_model = Activation('relu')(output_model)
-		output_model = Dense(n_3)(output_model)
-		output_model = BatchNormalization()(output_model)
-		output_model = Activation('relu')(output_model)
-		output_model = Dense(n_4)(output_model)
-		output_model = BatchNormalization()(output_model)
-		output_model = Activation('relu')(output_model)
-		output_model = Dense(n_5)(output_model)
-		output_model = BatchNormalization()(output_model)
-		output_model = Activation('relu')(output_model)
-		output_model = Dense(1, activation = output_activation)(output_model)
+		if not dropout:
+			output_model = Concatenate()(output_embeddings)
+			output_model = Reshape(target_shape = (1,231))(output_model)
+			output_model = Dense(n_1)(output_model)
+			output_model = BatchNormalization()(output_model)
+			output_model = Activation('relu')(output_model)
+			output_model = Dense(n_2)(output_model)
+			output_model = BatchNormalization()(output_model)
+			output_model = Activation('relu')(output_model)
+			output_model = Dense(n_3)(output_model)
+			output_model = BatchNormalization()(output_model)
+			output_model = Activation('relu')(output_model)
+			output_model = Dense(n_4)(output_model)
+			output_model = BatchNormalization()(output_model)
+			output_model = Activation('relu')(output_model)
+			output_model = Dense(n_5)(output_model)
+			output_model = BatchNormalization()(output_model)
+			output_model = Activation('relu')(output_model)
+			output_model = Dense(1, activation = output_activation)(output_model)
 
+		else:
+			output_model = Concatenate()(output_embeddings)
+			output_model = Reshape(target_shape = (1,231))(output_model)
+			output_model = Dense(n_1)(output_model)
+			output_model = BatchNormalization()(output_model)
+			output_model = Activation('relu')(output_model)
+			output_model = Dropout(dropout)(output_model)
+			output_model = Dense(n_2)(output_model)
+			output_model = BatchNormalization()(output_model)
+			output_model = Activation('relu')(output_model)
+			output_model = Dropout(dropout)(output_model)
+			output_model = Dense(n_3)(output_model)
+			output_model = BatchNormalization()(output_model)
+			output_model = Activation('relu')(output_model)
+			output_model = Dropout(dropout)(output_model)
+			output_model = Dense(n_4)(output_model)
+			output_model = BatchNormalization()(output_model)
+			output_model = Activation('relu')(output_model)
+			output_model = Dropout(dropout)(output_model)
+			output_model = Dense(n_5)(output_model)
+			output_model = BatchNormalization()(output_model)
+			output_model = Activation('relu')(output_model)
+			output_model = Dropout(dropout)(output_model)
+			output_model = Dense(1, activation = output_activation)(output_model)
+			
 		self.model = KerasModel(inputs = input_model, outputs = output_model)
 		self.model.compile(loss = err_func, optimizer = optimizer)
 

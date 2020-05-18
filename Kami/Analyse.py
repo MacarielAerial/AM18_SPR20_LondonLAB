@@ -17,7 +17,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 class Analyse:
 	'''Main module'''
-	def __init__(self, output_dir_path, cache_dir_path, sales_as_label = True, weekly_agg = False, n_1 = 1024, n_2 = 512, n_3 = 256, n_4 = 128, n_5 = 64, dropout = 0.4, output_activation = 'relu', err_func = 'mean_absolute_error', optimizer = 'adam', epochs = 25, patience = 5, batch_size = 256, n_sample = 600000, n_ensemble = 5, val_split_ratio = 0.95, save_embeddings = True, saved_embeddings_fname = 'embeddings.pickle'):
+	def __init__(self, output_dir_path, cache_dir_path, sales_as_label = True, weekly_agg = False, n_1 = 1024, n_2 = 512, n_3 = 256, n_4 = 128, n_5 = 64, dropout = False, output_activation = 'relu', err_func = 'mean_absolute_error', optimizer = 'adam', epochs = 25, patience = 5, batch_size = 256, n_sample = 600000, n_ensemble = 5, val_split_ratio = 0.95, save_embeddings = True, saved_embeddings_fname = 'embeddings.pickle'):
 		'''Initiate local variables'''
 		self.r_train, self.r_val = 0, 0
 		target_label = 'sales' if sales_as_label else 'quantity'
@@ -55,7 +55,8 @@ class Analyse:
 		print('{0:*^80}'.format(str(len(train_y)) + ' and ' + str(len(test_y))))
 		print('{0:*^80}'.format('Range of Train Target:'))
 		print('{0:*^80}'.format(str(min(train_y)) + ' to ' + str(max(train_y))))
-		train_x, test_x = Aux.encode_labels(features = train_x, cache_dir_path = cache_dir_path), Aux.encode_labels(features = test_x, cache_dir_path = cache_dir_path)
+		print(test_x)
+		train_x, test_x = Aux.encode_labels(train_features = train_x, test_features = test_x, cache_dir_path = cache_dir_path)
 
 		with open(cache_dir_path + 'train_prepped.pickle', 'wb') as f_train, open(cache_dir_path + 'test_prepped.pickle', 'wb') as f_test:
 			pickle.dump((train_x, train_y), f_train, -1), pickle.dump(test_x, f_test, -1)
@@ -95,7 +96,7 @@ class Analyse:
 		print('{0:*^80}'.format('Exporting Predictions to Memory...'))
 		with open(cache_dir_path + 'test_prepped.pickle', 'rb') as f:
 			X_test = pickle.load(f)
-		with open(output_dir_path + 'test_predicted.csv', 'w') as f:
+		with open(cache_dir_path + 'test_predicted.csv', 'w') as f:
 			f.write(','.join(Helper.feature_labels) + ',predicted\n')
 			for i, record in enumerate(X_test):
 				y_pred = np.mean([model.guess(record, Helper.feature_labels) for model in models])
@@ -112,19 +113,23 @@ class Aux:
 		features, target = np.array(features), np.array(target)
 		return features, target
 
-	def encode_labels(features, cache_dir_path):
+	def encode_labels(train_features, test_features, cache_dir_path):
 		'''Encode categorical features with integers'''
 		les = []
-		for i in range(features.shape[1]):
+		for i in range(train_features.shape[1]):
 			le = LabelEncoder()
-			le.fit(features[:, i])
+			if i not in [1, 4]:
+				le.fit(train_features[:, i])
+			else:
+				le.fit(np.vstack((train_features, test_features))[:, i])
 			les.append(le)
-			features[:, i] = le.transform(features[:, i])
-		features = features.astype(int)
+			train_features[:, i] = le.transform(train_features[:, i])
+			test_features[:, i] = le.transform(test_features[:, i])
+		train_features, test_features = train_features.astype(int), test_features.astype(int)
 
 		with open(cache_dir_path + 'les.pickle', 'wb') as f:
 			pickle.dump(les, f, -1)
-		return features
+		return train_features, test_features
 
 	def train_val_split(X, y, val_split_ratio, n_sample):
 		'''Split data into train and validation datasets and perform random sampling'''
