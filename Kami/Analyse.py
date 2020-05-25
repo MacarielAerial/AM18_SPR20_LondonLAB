@@ -17,7 +17,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 class Analyse:
 	'''Main module'''
-	def __init__(self, output_dir_path, cache_dir_path, sales_as_label = True, weekly_agg = False, n_1 = 2048, n_2 = 1024, n_3 = 512, n_4 = 256, n_5 = 128, dropout = False, output_activation = 'relu', err_func = 'mean_absolute_error', optimizer = 'adam', epochs = 50, patience = 15, batch_size = 1024, n_sample = 500000, n_ensemble = 3, val_split_ratio = 0.95, save_embeddings = True, saved_embeddings_fname = 'embeddings.pickle'):
+	def __init__(self, output_dir_path, cache_dir_path, sales_as_label = True, weekly_agg = False, n_1 = 2048, n_2 = 1024, n_3 = 512, n_4 = 256, n_5 = 128, dropout = False, output_activation = 'relu', err_func = 'mean_absolute_error', optimizer = 'adam', epochs = 50, patience = 5, batch_size = 1024, n_sample = 500000, n_ensemble = 3, val_split_ratio = 0.95, save_embeddings = True, saved_embeddings_fname = 'embeddings.pickle'):
 		'''Initiate local variables'''
 		self.r_train, self.r_val = 0, 0
 		target_label = 'sales' if sales_as_label else 'quantity'
@@ -55,7 +55,6 @@ class Analyse:
 		print('{0:*^80}'.format(str(len(train_y)) + ' and ' + str(len(test_y))))
 		print('{0:*^80}'.format('Range of Train Target:'))
 		print('{0:*^80}'.format(str(min(train_y)) + ' to ' + str(max(train_y))))
-		print(test_x)
 		train_x, test_x = Aux.encode_labels(train_features = train_x, test_features = test_x, cache_dir_path = cache_dir_path)
 
 		with open(cache_dir_path + 'train_prepped.pickle', 'wb') as f_train, open(cache_dir_path + 'test_prepped.pickle', 'wb') as f_test:

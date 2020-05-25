@@ -35,7 +35,7 @@ class Vis:
 	def preprocess(self, cache_dir_path, output_dir_path):
 		'''Preprocess data for plotting'''
 		test = pd.read_csv(cache_dir_path + 'test.csv', index_col = False)
-		test_predicted = pd.read_csv(output_dir_path + 'test_predicted.csv', index_col = False)
+		test_predicted = pd.read_csv(cache_dir_path + 'test_predicted.csv', index_col = False)
 		print(test['product'].value_counts()[:50])
 		self.merged = pd.DataFrame({'date': test['date'],
 					 'store': test['store'],
