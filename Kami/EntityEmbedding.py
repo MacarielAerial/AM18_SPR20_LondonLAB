@@ -13,7 +13,7 @@ from tensorflow.keras.utils import plot_model
 
 class EntityEmbedding:
 	'''Main model instance'''
-	def __init__(self, X_train, y_train, X_val, y_val, cache_dir_path, output_dir_path, feature_labels, n_1, n_2, n_3, n_4, n_5, dropout, output_activation, err_func, optimizer, epochs, patience, batch_size):
+	def __init__(self, X_train, y_train, X_val, y_val, cache_dir_path, output_dir_path, feature_labels, n_1, n_2, n_3, n_4, n_5, dropout, output_activation, err_func, optimizer, epochs, patience, batch_size, iteration_count):
 		self.max_log_y = max(np.max(np.log(y_train)), np.max(np.log(y_val)))
 		with open(cache_dir_path + 'scale_base.txt', 'w+') as f:
 			f.write(str(self.max_log_y))
@@ -23,7 +23,7 @@ class EntityEmbedding:
 					 output_activation = output_activation,
 					 err_func = err_func,
 					 optimizer = optimizer)
-		self.fit(X_train, y_train, X_val, y_val, cache_dir_path, feature_labels, patience = patience, epochs = epochs, batch_size = batch_size)
+		self.fit(X_train, y_train, X_val, y_val, cache_dir_path, feature_labels, patience = patience, epochs = epochs, batch_size = batch_size, iteration_count = iteration_count)
 
 	def preprocessing(self, X, feature_labels):
 		return Aux.split_features(X, feature_labels)
@@ -34,8 +34,8 @@ class EntityEmbedding:
 	def _val_for_pred(self, val):
 		return np.exp(val * self.max_log_y)
 
-	def fit(self, X_train, y_train, X_val, y_val, cache_dir_path, feature_labels, patience, epochs, batch_size):
-		callbacks = [EarlyStopping(monitor = 'val_loss', patience = patience), ModelCheckpoint(filepath = cache_dir_path + 'best_model_weights.hdf5', monitor = 'val_loss', verbose = 1, save_best_only = True)]
+	def fit(self, X_train, y_train, X_val, y_val, cache_dir_path, feature_labels, patience, epochs, batch_size, iteration_count):
+		callbacks = [EarlyStopping(monitor = 'val_loss', patience = patience), ModelCheckpoint(filepath = cache_dir_path + 'best_model_weights_' + str(iteration_count) + '.hdf5', monitor = 'val_loss', verbose = 1, save_best_only = True)]
 		self.model.fit(self.preprocessing(X_train, feature_labels), self._val_for_fit(y_train),
 				validation_data = (self.preprocessing(X_val, feature_labels), self._val_for_fit(y_val)),
 				epochs = epochs, batch_size = batch_size, callbacks = callbacks)

@@ -17,15 +17,16 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 class Analyse:
 	'''Main module'''
-	def __init__(self, output_dir_path, cache_dir_path, sales_as_label = True, weekly_agg = False, n_1 = 2048, n_2 = 1024, n_3 = 512, n_4 = 256, n_5 = 128, dropout = False, output_activation = 'relu', err_func = 'mean_absolute_error', optimizer = 'adam', epochs = 50, patience = 5, batch_size = 1024, n_sample = 500000, n_ensemble = 3, val_split_ratio = 0.95, save_embeddings = True, saved_embeddings_fname = 'embeddings.pickle'):
+	def __init__(self, output_dir_path, cache_dir_path, sales_as_label = True, weekly_agg = False, deployment_mode = False, n_1 = 2048, n_2 = 1024, n_3 = 512, n_4 = 256, n_5 = 128, dropout = False, output_activation = 'relu', err_func = 'mean_squared_error', optimizer = 'adam', epochs = 50, patience = 5, batch_size = 1024, n_sample = 500000, n_ensemble = 3, val_split_ratio = 0.95, save_embeddings = True, saved_embeddings_fname = 'embeddings.pickle'):
 		'''Initiate local variables'''
 		self.r_train, self.r_val = 0, 0
 		target_label = 'sales' if sales_as_label else 'quantity'
 		print('{0:*^80}'.format('Sales Forecast with Entity Embedding Model Initiated'))
 		self.extract_csv(cache_dir_path, weekly_agg = weekly_agg)
-		self.prep_features(cache_dir_path, target_label = target_label)
-		models = self.train_model(cache_dir_path, output_dir_path, n_1, n_2, n_3, n_4, n_5, dropout, output_activation, err_func, optimizer, epochs, patience, batch_size, n_sample, n_ensemble, val_split_ratio, save_embeddings, saved_embeddings_fname)
-		self.test_model(models, cache_dir_path, output_dir_path)
+		self.prep_features(cache_dir_path, target_label = target_label, deployment_mode = deployment_mode)
+		models = self.train_model(cache_dir_path, output_dir_path, deployment_mode, n_1, n_2, n_3, n_4, n_5, dropout, output_activation, err_func, optimizer, epochs, patience, batch_size, n_sample, n_ensemble, val_split_ratio, save_embeddings, saved_embeddings_fname)
+		if not deployment_mode:
+			self.test_model(models, cache_dir_path, output_dir_path)
 		print('{0:*^80}'.format('Sales Forecast with Entity Embedding Model Completed'))
 
 	def __repr__(self):
@@ -35,38 +36,53 @@ class Analyse:
 		'''Convert cached csv files into dictionary-like objects'''
 		train_path = (cache_dir_path + 'train.csv') if not weekly_agg else (cache_dir_path + 'train_weekly.csv')
 		test_path = (cache_dir_path + 'test.csv') if not weekly_agg else (cache_dir_path + 'test_weekly.csv')
-		with open(train_path) as csv_train, open(test_path) as csv_test:
-			train, test = csv.reader(csv_train, delimiter = ','), csv.reader(csv_test, delimiter = ',')
-			with open(cache_dir_path + 'train.pickle', 'wb') as f_train, open(cache_dir_path + 'test.pickle', 'wb') as f_test:
-				train, test = Helper.csv2dict(train), Helper.csv2dict(test)
-				train = train[::-1]
-				pickle.dump(train, f_train, -1), pickle.dump(test, f_test, -1)
+		df_path = (cache_dir_path + 'df.csv') if not weekly_agg else (cache_dir_path + 'df_weekly.csv')
+		with open(train_path) as csv_train, open(test_path) as csv_test, open(df_path) as csv_df:
+			train, test, df = csv.reader(csv_train, delimiter = ','), csv.reader(csv_test, delimiter = ','), csv.reader(csv_df, delimiter = ',')
+			with open(cache_dir_path + 'train.pickle', 'wb') as f_train, open(cache_dir_path + 'test.pickle', 'wb') as f_test, open(cache_dir_path + 'df.pickle', 'wb') as f_df:
+				train, test, df = Helper.csv2dict(train), Helper.csv2dict(test), Helper.csv2dict(df)
+				train, df = train[::-1], df[::-1]
+				pickle.dump(train, f_train, -1), pickle.dump(test, f_test, -1), pickle.dump(df, f_df, -1)
 
-	def prep_features(self, cache_dir_path, target_label):
+	def prep_features(self, cache_dir_path, target_label, deployment_mode):
 		'''Engineer features to ready for neural network'''
-		with open(cache_dir_path + 'train.pickle', 'rb') as f_train, open(cache_dir_path + 'test.pickle', 'rb') as f_test:
-			train, test = pickle.load(f_train), pickle.load(f_test)
+		with open(cache_dir_path + 'train.pickle', 'rb') as f_train, open(cache_dir_path + 'test.pickle', 'rb') as f_test, open(cache_dir_path + 'df.pickle', 'rb') as f_df:
+			train, test, df = pickle.load(f_train), pickle.load(f_test), pickle.load(f_df)
 			n_train_val = len(train)
 
-		train_x, train_y, test_x, test_y = [], [], [], []
+		train_x, train_y, test_x, test_y, X, y = [], [], [], [], [], []
 		train_x, train_y = Aux.select_and_split(data = train, target = train_y, features = train_x, target_label = target_label)
 		test_x, test_y = Aux.select_and_split(data = test, target = test_y, features = test_x, target_label = target_label)
-		print('{0:*^80}'.format('Number of Train & Validation and Test Observations:'))
-		print('{0:*^80}'.format(str(len(train_y)) + ' and ' + str(len(test_y))))
-		print('{0:*^80}'.format('Range of Train Target:'))
-		print('{0:*^80}'.format(str(min(train_y)) + ' to ' + str(max(train_y))))
-		train_x, test_x = Aux.encode_labels(train_features = train_x, test_features = test_x, cache_dir_path = cache_dir_path)
+		X, y = Aux.select_and_split(data = df, target = y, features = X, target_label = target_label)
+		if deployment_mode:
+			print('{0:*^80}'.format('Number of Train & Validation Observations Available:'))
+			print('{0:*^80}'.format(str(len(y))))
+			print('{0:*^80}'.format('Range of Train Target:'))
+			print('{0:*^80}'.format(str(min(y)) + ' to ' + str(max(y))))
+		else:
+			print('{0:*^80}'.format('Number of Train & Validation and Test Observations Available:'))
+			print('{0:*^80}'.format(str(len(train_y)) + ' and ' + str(len(test_y))))
+			print('{0:*^80}'.format('Range of Train Target:'))
+			print('{0:*^80}'.format(str(min(train_y)) + ' to ' + str(max(train_y))))
+		train_x, test_x, X = Aux.encode_labels(train_features = train_x, test_features = test_x, all_features = X, cache_dir_path = cache_dir_path)
 
-		with open(cache_dir_path + 'train_prepped.pickle', 'wb') as f_train, open(cache_dir_path + 'test_prepped.pickle', 'wb') as f_test:
-			pickle.dump((train_x, train_y), f_train, -1), pickle.dump(test_x, f_test, -1)
+		with open(cache_dir_path + 'train_prepped.pickle', 'wb') as f_train, open(cache_dir_path + 'test_prepped.pickle', 'wb') as f_test, open(cache_dir_path + 'all_prepped.pickle', 'wb') as f_all:
+			pickle.dump((train_x, train_y), f_train, -1), pickle.dump(test_x, f_test, -1), pickle.dump((X, y), f_all, -1)
 		pd.DataFrame(test_x).to_csv(cache_dir_path + 'test_features_encoded.csv', header = Helper.feature_labels, index = False)
+		pd.DataFrame(X).to_csv(cache_dir_path + 'all_features_encoded.csv', header = Helper.feature_labels, index = False)
 
-	def train_model(self, cache_dir_path, output_dir_path, n_1, n_2, n_3, n_4, n_5, dropout, output_activation, err_func, optimizer, epochs, patience, batch_size, n_sample, n_ensemble, val_split_ratio, save_embeddings, saved_embeddings_fname):
+	def train_model(self, cache_dir_path, output_dir_path, deployment_mode, n_1, n_2, n_3, n_4, n_5, dropout, output_activation, err_func, optimizer, epochs, patience, batch_size, n_sample, n_ensemble, val_split_ratio, save_embeddings, saved_embeddings_fname):
 		'''Train an entity embedding LSTM neural network to predict target variable'''
-		with open(cache_dir_path + 'train_prepped.pickle', 'rb') as f:
-			(X, y) = pickle.load(f)
+		if not deployment_mode:
+			print('{0:*^80}'.format('Model Training Initiated'))
+			with open(cache_dir_path + 'train_prepped.pickle', 'rb') as f:
+				(X, y) = pickle.load(f)
+		else:
+			print('{0:*^80}'.format('Model Deployment Initiated'))
+			with open(cache_dir_path + 'all_prepped.pickle', 'rb') as f:
+				(X, y) = pickle.load(f)
 		X_train, X_val, y_train, y_val = Aux.train_val_split(X, y, val_split_ratio, n_sample)
-		print('{0:*^80}'.format('Number of Train Observations:'))
+		print('{0:*^80}'.format('Number of Train Observations Sampled:'))
 		print('{0:*^80}'.format(str(y_train.shape[0])))
 
 		print('{0:*^80}'.format('Fitting Neural Network with Entity Embedding LSTM...'))
@@ -77,7 +93,7 @@ class Analyse:
 						 n_1, n_2, n_3, n_4, n_5,
 						 dropout, output_activation,
 						 err_func, optimizer, epochs,
-						 patience, batch_size)) for i in range(n_ensemble)]
+						 patience, batch_size, i)) for i in range(n_ensemble)]
 		if save_embeddings:
 			Helper.save_embeddings(models, cache_dir_path)
 
@@ -88,6 +104,10 @@ class Analyse:
 		print('{0:*^80}'.format('Validation Error:'))
 		self.r_val = Aux.evaluate_models(models, X_val, y_val)
 		print('{0:*^80}'.format(str(self.r_val)))
+		if not deployment_mode:
+			print('{0:*^80}'.format('Model Training Completed'))
+		else:
+			print('{0:*^80}'.format('Model Deployment Initiated'))
 		return models
 
 	def test_model(self, models, cache_dir_path, output_dir_path):
@@ -112,9 +132,10 @@ class Aux:
 		features, target = np.array(features), np.array(target)
 		return features, target
 
-	def encode_labels(train_features, test_features, cache_dir_path):
+	def encode_labels(train_features, test_features, all_features, cache_dir_path):
 		'''Encode categorical features with integers'''
 		les = []
+		les_all = []
 		for i in range(train_features.shape[1]):
 			le = LabelEncoder()
 			if i not in [1, 4]:
@@ -122,13 +143,19 @@ class Aux:
 			else:
 				le.fit(np.vstack((train_features, test_features))[:, i])
 			les.append(le)
+
+			le_all = LabelEncoder()
+			le_all.fit(all_features[:, i])
+			les_all.append(le_all)
+
 			train_features[:, i] = le.transform(train_features[:, i])
 			test_features[:, i] = le.transform(test_features[:, i])
-		train_features, test_features = train_features.astype(int), test_features.astype(int)
+			all_features[:, i] = le_all.transform(all_features[:, i])
+		train_features, test_features, all_features = train_features.astype(int), test_features.astype(int), all_features.astype(int)
 
-		with open(cache_dir_path + 'les.pickle', 'wb') as f:
-			pickle.dump(les, f, -1)
-		return train_features, test_features
+		with open(cache_dir_path + 'les.pickle', 'wb') as f, open(cache_dir_path + 'les_all.pickle', 'wb') as f_all:
+			pickle.dump(les, f, -1), pickle.dump(les_all, f_all, -1)
+		return train_features, test_features, all_features
 
 	def train_val_split(X, y, val_split_ratio, n_sample):
 		'''Split data into train and validation datasets and perform random sampling'''

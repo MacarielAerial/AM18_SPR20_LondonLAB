@@ -13,7 +13,6 @@ class Preprocess:
 		'''Initiate settings'''
 		pd.options.mode.chained_assignment = None
 		self.cols_renames, self.cache_dir_path = cols_renames, cache_dir_path
-		self.df_raw, self.train, self.test = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 		self.data_import(input_f_path = input_f_path)
 		print('{0:*^80}'.format('Raw Data Imported'))
 		self.data_clean(df = self.df_raw, cache_dir_path = cache_dir_path, split_ratio = split_ratio, cols_renames = cols_renames)
@@ -30,7 +29,7 @@ class Preprocess:
 
 	def data_clean(self, df, cache_dir_path, split_ratio, cols_renames):
 		'''Convert data into the required format'''
-		self.train, self.test, self.train_weekly, self.test_weekly = Aux.clean_product_data(df = df, split_ratio = split_ratio, cols_renames = cols_renames)
+		self.train, self.test, self.train_weekly, self.test_weekly, self.df, self.df_weekly = Aux.clean_product_data(df = df, split_ratio = split_ratio, cols_renames = cols_renames)
 
 	def shutdown(self, cache_dir_path):
 		'''Export results as the final step'''
@@ -38,6 +37,8 @@ class Preprocess:
 		self.test.to_csv(cache_dir_path + 'test.csv', index = False)
 		self.train_weekly.to_csv(cache_dir_path + 'train_weekly.csv', index = False)
 		self.test_weekly.to_csv(cache_dir_path + 'test_weekly.csv', index = False)
+		self.df.to_csv(cache_dir_path + 'df.csv', index = False)
+		self.df_weekly.to_csv(cache_dir_path + 'df_weekly.csv', index = False)
 
 class Aux:
 	'''Axuliary module to structure the code'''
@@ -64,7 +65,7 @@ class Aux:
 		train, test = df.iloc[:round(len(df) * split_ratio), :], df.iloc[round(len(df) * split_ratio):, :]
 		train_weekly, test_weekly = df_weekly.iloc[:round(len(df_weekly) * split_ratio), :], df_weekly.iloc[round(len(df_weekly) * split_ratio):, :]
 
-		return train, test, train_weekly, test_weekly
+		return train, test, train_weekly, test_weekly, df, df_weekly
 
 class Helper:
 	'''Standalone helper function to further reduce clutter'''

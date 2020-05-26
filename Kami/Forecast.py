@@ -3,6 +3,7 @@ This script loads previously trained model to predict new values
 '''
 
 import os
+import glob
 import pickle
 import numpy as np
 import pandas as pd
@@ -13,7 +14,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 class Forecast:
 	def __init__(self, output_dir_path, cache_dir_path, store_list, product_list, start, end, columns = ['store', 'product', 'day_of_week', 'day_of_month', 'year', 'month']):
 		print('{0:*^80}'.format('Loading Previously Saved Model...'))
-		self.model = load_model(cache_dir_path + 'best_model_weights.hdf5')
+		self.models = [load_model(cache_dir_path + weights_file_name) for weights_file_name in glob.glob('best_model_weights_*.hdf5')]
 		with open(cache_dir_path + 'scale_base.txt', 'r') as f:
 			self.scale_base = float(f.read())
 		print('{0:*^80}'.format('Generating Input Data...'))
@@ -21,7 +22,7 @@ class Forecast:
 		print('{0:*^80}'.format('A Sample of Generated Transformed Input Data:'))
 		print(self.df_input[:5])
 		print('{0:*^80}'.format('Predicting Values Based on Input...'))
-		predictions = self.predict(cache_dir_path, self.model, self.df_input)
+		predictions = self.predict(cache_dir_path, self.models, self.df_input)
 		self.reformat(cache_dir_path, output_dir_path, predictions, self.df)
 		print('{0:*^80}'.format('Ex-ante Predictions Saved to Memory'))
 
@@ -49,12 +50,12 @@ class Forecast:
 			self.df_input[:, i] = les[i].transform(self.df_input[:, i])
 		self.df_input = self.df_input.astype(int)
 
-	def predict(self, cache_dir_path, model, df_input):
+	def predict(self, cache_dir_path, models, df_input):
 		predictions = []
 		with open(cache_dir_path + 'ex_ante_predictions.csv', 'w') as f:
 			f.write(','.join(Helper.feature_labels) + ',predicted\n')
 			for i, record in enumerate(df_input):
-				y_pred = Aux.guess(model, record, Helper.feature_labels, self.scale_base)[0]
+				y_pred = np.mean([Aux.guess(model, record, Helper.feature_labels, self.scale_base)[0] for model in models])
 				predictions.append(y_pred)
 				f.write('{},{},{},{},{},{},{}\n'.format(*[record[i] for i in range(len(Helper.feature_labels))] + [y_pred]))
 		return predictions
