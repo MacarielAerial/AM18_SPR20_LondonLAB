@@ -14,7 +14,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 class Forecast:
 	def __init__(self, output_dir_path, cache_dir_path, store_list, product_list, start, end, columns = ['store', 'product', 'day_of_week', 'day_of_month', 'year', 'month']):
 		print('{0:*^80}'.format('Loading Previously Saved Model...'))
-		self.models = [load_model(cache_dir_path + weights_file_name) for weights_file_name in glob.glob('best_model_weights_*.hdf5')]
+		self.models = [load_model(weights_file_name) for weights_file_name in glob.glob(cache_dir_path + 'best_model_weights_*.hdf5')]
 		with open(cache_dir_path + 'scale_base.txt', 'r') as f:
 			self.scale_base = float(f.read())
 		print('{0:*^80}'.format('Generating Input Data...'))

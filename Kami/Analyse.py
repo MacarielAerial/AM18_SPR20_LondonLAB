@@ -9,6 +9,8 @@ import pickle
 import os
 import csv
 import sys
+from joblib import Parallel, delayed
+import multiprocessing
 from .EntityEmbedding import EntityEmbedding
 from datetime import datetime
 from sklearn.preprocessing import LabelEncoder
