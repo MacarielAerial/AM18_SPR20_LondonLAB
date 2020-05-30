@@ -2,9 +2,10 @@
 README.txt
 setup.cfg
 setup.py
-Kami/Analyse.py
+Kami/Core.py
 Kami/EntityEmbedding.py
 Kami/Forecast.py
+Kami/Helper.py
 Kami/Preprocess.py
 Kami/Visualisation.py
 Kami/__init__.py

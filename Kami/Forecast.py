@@ -8,23 +8,20 @@ import pickle
 import numpy as np
 import pandas as pd
 from tensorflow.keras.models import load_model
-from .Analyse import Helper
+from .Helper import Helper
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 class Forecast:
-	def __init__(self, output_dir_path, cache_dir_path, store_list, product_list, start, end, columns = ['store', 'product', 'day_of_week', 'day_of_month', 'year', 'month']):
-		print('{0:*^80}'.format('Loading Previously Saved Model...'))
-		self.models = [load_model(weights_file_name) for weights_file_name in glob.glob(cache_dir_path + 'best_model_weights_*.hdf5')]
-		with open(cache_dir_path + 'scale_base.txt', 'r') as f:
-			self.scale_base = float(f.read())
-		print('{0:*^80}'.format('Generating Input Data...'))
-		self.generate_input(cache_dir_path, store_list, product_list, start, end, columns)
-		print('{0:*^80}'.format('A Sample of Generated Transformed Input Data:'))
-		print(self.df_input[:5])
-		print('{0:*^80}'.format('Predicting Values Based on Input...'))
-		predictions = self.predict(cache_dir_path, self.models, self.df_input)
-		self.reformat(cache_dir_path, output_dir_path, predictions, self.df)
-		print('{0:*^80}'.format('Ex-ante Predictions Saved to Memory'))
+	def __init__(self, output_dir_path, cache_dir_path, columns = None):
+		self.output_dir_path, self.cache_dir_path, self.columns = output_dir_path, cache_dir_path, ['store', 'product', 'day_of_week', 'day_of_month', 'year', 'month']
+		if glob.glob(self.cache_dir_path + 'best_model_weights_*.hdf5'):
+			print('{0:*^80}'.format('Previously Saved Model Detected'))
+			print('{0:*^80}'.format('Loading Previously Saved Model...'))
+			self.models = [load_model(weights_file_name) for weights_file_name in glob.glob(self.cache_dir_path + 'best_model_weights_*.hdf5')]
+			with open(self.cache_dir_path + 'scale_base.txt', 'r') as f:
+				self.scale_base = float(f.read())
+		else:
+			print('{0:*^80}'.format('No Previously Saved Model Exists'))
 
 	def generate_input(self, cache_dir_path, store_list, product_list, start, end, columns):
 		date = pd.bdate_range(start = start, end = end)
@@ -63,6 +60,16 @@ class Forecast:
 	def reformat(self, cache_dir_path, output_dir_path, predictions, df):
 		df['predicted'] = predictions
 		df.to_csv(output_dir_path + 'ex_ante_predictions_untransformed.csv', index = False)
+
+	def Forecast(self, store_list, product_list, start, end):
+		print('{0:*^80}'.format('Generating Input Data...'))
+		self.generate_input(self.cache_dir_path, store_list, product_list, start, end, self.columns)
+		print('{0:*^80}'.format('A Sample of Generated Transformed Input Data:'))
+		print(self.df_input[:5])
+		print('{0:*^80}'.format('Predicting Values Based on Input...'))
+		predictions = self.predict(self.cache_dir_path, self.models, self.df_input)
+		self.reformat(self.cache_dir_path, self.output_dir_path, predictions, self.df)
+		print('{0:*^80}'.format('Ex-ante Predictions Saved to Memory'))
 
 class Aux:
 	def guess(model, features, feature_labels, scale_base):

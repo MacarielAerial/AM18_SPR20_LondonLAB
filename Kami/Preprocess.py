@@ -13,12 +13,7 @@ class Preprocess:
 		'''Initiate settings'''
 		pd.options.mode.chained_assignment = None
 		self.cols_renames, self.cache_dir_path = cols_renames, cache_dir_path
-		self.data_import(input_f_path = input_f_path)
-		print('{0:*^80}'.format('Raw Data Imported'))
-		self.data_clean(df = self.df_raw, cache_dir_path = cache_dir_path, split_ratio = split_ratio, cols_renames = cols_renames)
-		print('{0:*^80}'.format('Raw Data Cleaned'))
-		self.shutdown(cache_dir_path = cache_dir_path)
-		print('{0:*^80}'.format('Cleaned Data Exported'))
+		self.input_f_path, self.split_ratio = input_f_path, split_ratio
 
 	def __repr__(self):
 		return 'Please assign an object to store the instance'
@@ -39,6 +34,15 @@ class Preprocess:
 		self.test_weekly.to_csv(cache_dir_path + 'test_weekly.csv', index = False)
 		self.df.to_csv(cache_dir_path + 'df.csv', index = False)
 		self.df_weekly.to_csv(cache_dir_path + 'df_weekly.csv', index = False)
+
+	def Preprocess(self):
+		print('{0:*^80}'.format('Importing Raw Data'))
+		self.data_import(input_f_path = self.input_f_path)
+		print('{0:*^80}'.format('Cleaning Raw Data'))
+		self.data_clean(df = self.df_raw, cache_dir_path = self.cache_dir_path, split_ratio = self.split_ratio, cols_renames = self.cols_renames)
+		print('{0:*^80}'.format('Exporting Cleaned Data'))
+		self.shutdown(cache_dir_path = self.cache_dir_path)
+		print('{0:*^80}'.format('Preprocessing Completed'))
 
 class Aux:
 	'''Axuliary module to structure the code'''
@@ -62,8 +66,8 @@ class Aux:
 		df = df.set_index(['date', 'store', 'product']).sort_index(ascending = True)
 		df_weekly = df.groupby([pd.Grouper(level = 'date', freq = 'W'), pd.Grouper(level = 'store'), pd.Grouper(level = 'product')]).agg({'sales': 'sum', 'price': 'mean', 'quantity': 'sum', 'day_of_week': 'first', 'day_of_month': 'first', 'month': 'first'})
 		df.reset_index(inplace = True), df_weekly.reset_index(inplace = True)
-		train, test = df.iloc[:round(len(df) * split_ratio), :], df.iloc[round(len(df) * split_ratio):, :]
-		train_weekly, test_weekly = df_weekly.iloc[:round(len(df_weekly) * split_ratio), :], df_weekly.iloc[round(len(df_weekly) * split_ratio):, :]
+		train, test = df.iloc[:round(float(len(df) * split_ratio)), :], df.iloc[round(float(len(df) * split_ratio)):, :]
+		train_weekly, test_weekly = df_weekly.iloc[:round(float(len(df_weekly) * split_ratio)), :], df_weekly.iloc[round(float(len(df_weekly) * split_ratio)):, :]
 
 		return train, test, train_weekly, test_weekly, df, df_weekly
 

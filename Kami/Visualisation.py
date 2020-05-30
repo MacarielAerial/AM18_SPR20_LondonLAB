@@ -10,27 +10,48 @@ from sklearn import manifold
 import pandas as pd
 import matplotlib.pyplot as plt
 
-class Vis:
+class Vis2:
+	'''Secondary module'''
+	def __init__(self, output_dir_path, cache_dir_path):
+		self.load_embeddings(cache_dir_path)
+		self.load_label_encoders(cache_dir_path)
+		self.plot_product_embeddings(output_dir_path)
+
+	def load_embeddings(self, cache_dir_path):
+		with open(cache_dir_path + 'embeddings.pickle', 'rb') as f:
+			self.store_embedding, self.product_embedding, self.dow_embedding, self.dom_embedding, self.year_embedding, self.month_embedding = pickle.load(f)
+
+	def load_label_encoders(self, cache_dir_path):
+		with open(cache_dir_path + 'les.pickle', 'rb') as f:
+			les = pickle.load(f)
+		self.le_store, self.le_product, self.le_dow, self.le_dom, self.le_year, self.le_month = les[0], les[1], les[2], les[3], les[4], les[5]
+
+	def plot_product_embeddings(self, output_dir_path):
+		tsne = manifold.TSNE(init = 'pca', random_state = 0, method = 'exact', perplexity = 5, learning_rate = 100)
+		Y = tsne.fit_transform(self.product_embedding)
+		fig, ax = plt.subplots(figsize = (96, 54))
+		ax.scatter(-Y[:, 0], -Y[:, 1])
+		text = [ax.annotate(txt, (-Y[i, 0], -Y[i, 1]), xytext = (-20, 8), textcoords = 'offset points', fontfamily = 'monospace', fontsize = 6) for i, txt in enumerate(self.le_product.classes_)]
+		ax.set_title('Product Embedding Plot')
+		fig.savefig(output_dir_path + 'product_embedding.pdf')
+		plt.close(fig)
+
+class Visualise(Vis2):
 	'''Main module'''
-	def __init__(self, output_dir_path, cache_dir_path, sub_dir = 'Predicted_vs_Actual_Plots/'):
+	def __init__(self, output_dir_path, cache_dir_path, sub_dir = None):
+		super().__init__(output_dir_path, cache_dir_path)
 		self.merged = pd.DataFrame()
 		self.product_dict = {}
-		print('{0:*^80}'.format('Predicted vs. Actual Plotting in Progress...'))
-		self.configure(output_dir_path, sub_dir = sub_dir)
-		self.preprocess(cache_dir_path, output_dir_path)
-		self.plot_predicted_vs_actual(self.merged, self.product_dict, 'overall_sales', output_dir_path, sub_dir, plot_total_sales = True)
-		[self.plot_predicted_vs_actual(self.merged, self.product_dict, item, output_dir_path, sub_dir, plot_total_sales = False) for item in self.product_dict]
-		print('{0:*^80}'.format('Predicted vs. Actual Plotting Completed'))
-		Vis2(output_dir_path, cache_dir_path)
-		print('{0:*^80}'.format('Product Embedding Plotting Completed'))		
+		self.output_dir_path, self.cache_dir_path = output_dir_path, cache_dir_path
+		self.sub_dir = 'Predicted_vs_Actual_Plots/' if sub_dir == None else sub_dir
 
-	def configure(self, output_dir_path, sub_dir):
+	def configure(self):
 		'''Configure settings'''
 		from pandas.plotting import register_matplotlib_converters
 		register_matplotlib_converters()
 		plt.style.use('ggplot')
-		if not os.path.exists(output_dir_path + sub_dir):
-			os.makedirs(output_dir_path + sub_dir)
+		if not os.path.exists(self.output_dir_path + self.sub_dir):
+			os.makedirs(self.output_dir_path + self.sub_dir)
 
 	def preprocess(self, cache_dir_path, output_dir_path):
 		'''Preprocess data for plotting'''
@@ -65,29 +86,14 @@ class Vis:
 		plt.savefig(output_dir_path + sub_dir + item.replace(' ', '_').replace('/', '_').lower() + '.png', dpi = 300)
 		plt.close()
 
-class Vis2:
-	'''Secondary module'''
-	def __init__(self, output_dir_path, cache_dir_path):
-		self.load_embeddings(cache_dir_path)
-		self.load_label_encoders(cache_dir_path)
-		self.plot_product_embeddings(output_dir_path)
+	def Vis(self):
+		print('{0:*^80}'.format('Predicted vs. Actual Plotting in Progress...'))
+		self.configure()
+		self.preprocess(self.cache_dir_path, self.output_dir_path)
+		self.plot_predicted_vs_actual(self.merged, self.product_dict, 'overall_sales', self.output_dir_path, self.sub_dir, plot_total_sales = True)
+		[self.plot_predicted_vs_actual(self.merged, self.product_dict, item, self.output_dir_path, self.sub_dir, plot_total_sales = False) for item in self.product_dict]
+		print('{0:*^80}'.format('Product Embedding Plotting in Progress'))		
+		Vis(self.output_dir_path, self.cache_dir_path)
+		print('{0:*^80}'.format('Visualisation Completed'))
 
-	def load_embeddings(self, cache_dir_path):
-		with open(cache_dir_path + 'embeddings.pickle', 'rb') as f:
-			self.store_embedding, self.product_embedding, self.dow_embedding, self.dom_embedding, self.year_embedding, self.month_embedding = pickle.load(f)
-
-	def load_label_encoders(self, cache_dir_path):
-		with open(cache_dir_path + 'les.pickle', 'rb') as f:
-			les = pickle.load(f)
-		self.le_store, self.le_product, self.le_dow, self.le_dom, self.le_year, self.le_month = les[0], les[1], les[2], les[3], les[4], les[5]
-
-	def plot_product_embeddings(self, output_dir_path):
-		tsne = manifold.TSNE(init = 'pca', random_state = 0, method = 'exact', perplexity = 5, learning_rate = 100)
-		Y = tsne.fit_transform(self.product_embedding)
-		fig, ax = plt.subplots(figsize = (96, 54))
-		ax.scatter(-Y[:, 0], -Y[:, 1])
-		text = [ax.annotate(txt, (-Y[i, 0], -Y[i, 1]), xytext = (-20, 8), textcoords = 'offset points', fontfamily = 'monospace', fontsize = 6) for i, txt in enumerate(self.le_product.classes_)]
-		ax.set_title('Product Embedding Plot')
-		fig.savefig(output_dir_path + 'product_embedding.pdf')
-		plt.close(fig)
 

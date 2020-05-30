@@ -11,25 +11,27 @@ import csv
 import sys
 from joblib import Parallel, delayed
 import multiprocessing
+from .Preprocess import Preprocess
 from .EntityEmbedding import EntityEmbedding
+from .Visualisation import Visualise
+from .Forecast import Forecast
+from .Helper import Helper
 from datetime import datetime
 from sklearn.preprocessing import LabelEncoder
 sys.setrecursionlimit(10000)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-class Analyse:
+class Kami(Preprocess, Visualise, Forecast):
 	'''Main module'''
-	def __init__(self, output_dir_path, cache_dir_path, sales_as_label = True, weekly_agg = False, deployment_mode = False, n_1 = 2048, n_2 = 1024, n_3 = 512, n_4 = 256, n_5 = 128, dropout = False, output_activation = 'relu', err_func = 'mean_squared_error', optimizer = 'adam', epochs = 50, patience = 5, batch_size = 1024, n_sample = 500000, n_ensemble = 3, val_split_ratio = 0.95, save_embeddings = True, saved_embeddings_fname = 'embeddings.pickle'):
+	def __init__(self, input_f_path, output_dir_path, cache_dir_path, sales_as_label = True, weekly_agg = False, deployment_mode = False, n_1 = 2048, n_2 = 1024, n_3 = 512, n_4 = 256, n_5 = 128, dropout = False, output_activation = 'relu', err_func = 'mean_squared_error', optimizer = 'adam', epochs = 50, patience = 5, batch_size = 1024, n_sample = 500000, n_ensemble = 3, val_split_ratio = 0.95, save_embeddings = True, saved_embeddings_fname = 'embeddings.pickle', *args, **kwargs):
 		'''Initiate local variables'''
+		Preprocess.__init__(self, input_f_path, cache_dir_path)
+		Visualise.__init__(self, output_dir_path, cache_dir_path)
+		Forecast.__init__(self, output_dir_path, cache_dir_path)
 		self.r_train, self.r_val = 0, 0
-		target_label = 'sales' if sales_as_label else 'quantity'
-		print('{0:*^80}'.format('Sales Forecast with Entity Embedding Model Initiated'))
-		self.extract_csv(cache_dir_path, weekly_agg = weekly_agg)
-		self.prep_features(cache_dir_path, target_label = target_label, deployment_mode = deployment_mode)
-		models = self.train_model(cache_dir_path, output_dir_path, deployment_mode, n_1, n_2, n_3, n_4, n_5, dropout, output_activation, err_func, optimizer, epochs, patience, batch_size, n_sample, n_ensemble, val_split_ratio, save_embeddings, saved_embeddings_fname)
-		if not deployment_mode:
-			self.test_model(models, cache_dir_path, output_dir_path)
-		print('{0:*^80}'.format('Sales Forecast with Entity Embedding Model Completed'))
+		self.input_f_path, self.cache_dir_path, self.output_dir_path, self.weekly_agg, self.deployment_mode = self.input_f_path, cache_dir_path, output_dir_path, weekly_agg, deployment_mode
+		self.n_1, self.n_2, self.n_3, self.n_4, self.n_5, self.dropout, self.output_activation, self.err_func, self.optimizer, self.epochs, self.patience, self.batch_size, self.n_sample, self.n_ensemble, self.val_split_ratio, self.save_embeddings, self.saved_embeddings_fname = n_1, n_2, n_3, n_4, n_5, dropout, output_activation, err_func, optimizer, epochs, patience, batch_size, n_sample, n_ensemble, val_split_ratio, save_embeddings, saved_embeddings_fname
+		self.target_label = 'sales' if sales_as_label else 'quantity'
 
 	def __repr__(self):
 		return 'Please assign an object to store the instance'
@@ -123,6 +125,17 @@ class Analyse:
 				y_pred = np.mean([model.guess(record, Helper.feature_labels) for model in models])
 				f.write('{},{},{},{},{},{},{}\n'.format(*[record[i] for i in range(len(Helper.feature_labels))] + [y_pred]))
 
+	def Analyse(self, n_sample = None):
+		if n_sample == None:
+			n_sample = self.n_sample
+		print('{0:*^80}'.format('Sales Forecast with Entity Embedding Model Initiated'))
+		self.extract_csv(self.cache_dir_path, weekly_agg = self.weekly_agg)
+		self.prep_features(self.cache_dir_path, target_label = self.target_label, deployment_mode = self.deployment_mode)
+		models = self.train_model(self.cache_dir_path, self.output_dir_path, self.deployment_mode, self.n_1, self.n_2, self.n_3, self.n_4, self.n_5, self.dropout, self.output_activation, self.err_func, self.optimizer, self.epochs, self.patience, self.batch_size, n_sample, self.n_ensemble, self.val_split_ratio, self.save_embeddings, self.saved_embeddings_fname)
+		if not self.deployment_mode:
+			self.test_model(models, self.cache_dir_path, self.output_dir_path)
+		print('{0:*^80}'.format('Sales Forecast with Entity Embedding Model Completed'))
+
 class Aux:
 	'''Auxiliary module to reduce code clutters'''
 	def select_and_split(data, target, features, target_label):
@@ -174,46 +187,3 @@ class Aux:
 		relative_err = np.absolute((y - mean_sales) / y)
 		result = np.sum(relative_err) / len(y)
 		return result
-
-class Helper:
-	'''Independent auxiliary functions'''
-	feature_labels = ['store', 'product', 'day_of_week', 'day_of_month', 'year', 'month']
-
-	def csv2dict(csv):
-		dict, keys = [], []
-		for row_idx, row in enumerate(csv):
-			if row_idx == 0:
-				keys = row
-				continue
-			dict.append({key: value for key, value in zip(keys, row)})
-		return dict
-
-	def sample(X, y, n):
-		'''Randomly sample from given distributions'''
-		n_row = X.shape[0]
-		indices = np.random.randint(n_row, size = n)
-		return X[indices, :], y[indices]
-
-	def save_embeddings(models, cache_dir_path):
-		'''Save categorical data embeddings to memory'''
-		model = models[0].model
-		store_embedding = model.get_layer('store_embedding').get_weights()[0]
-		product_embedding = model.get_layer('product_embedding').get_weights()[0]
-		dow_embedding = model.get_layer('day_of_week_embedding').get_weights()[0]
-		dom_embedding = model.get_layer('day_of_month_embedding').get_weights()[0]
-		year_embedding = model.get_layer('year_embedding').get_weights()[0]
-		month_embedding = model.get_layer('month_embedding').get_weights()[0]
-		with open(cache_dir_path + 'embeddings.pickle', 'wb') as f:
-			pickle.dump([store_embedding, product_embedding, dow_embedding, dom_embedding, year_embedding, month_embedding], f, -1)
-
-	def select_features(record):
-		'''Select features before separating features from target'''
-		dt = datetime.strptime(record['date'], '%Y-%m-%d')
-		store = str(record['store'])
-		product = str(record['product'])
-		day_of_week = int(record['day_of_week'])
-		day_of_month =  int(record['day_of_month'])
-		year = dt.year
-		month = int(record['month'])
-		return [store, product, day_of_week, day_of_month, year, month]
-
