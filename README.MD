@@ -1,6 +1,6 @@
 # AM18_SPR20_LondonLAB
 
-## Packagr Description
+## Package Description
 
 The package contains one object **Kami** with four methods in the order of execution:  
 1. **Preprocess()**
