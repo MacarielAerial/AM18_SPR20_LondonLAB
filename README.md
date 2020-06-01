@@ -35,3 +35,6 @@ While **Preprocess** and **Vis** methods are executed without any argument, **An
 			start = 'MM/DD/YYYY',
 			end = 'MM/DD/YYYY')
 ***
+
+The package's structure is inspired by Kaggle Rossmann sales forecast comptition third place winner Neokami whose original GitHub repository is as followed:
+[Neokami](https://github.com/entron/entity-embedding-rossmann/tree/kaggle)
